@@ -76,3 +76,29 @@ describe('Astro dev with vite.base path', () => {
 		assert.match($('script').attr('src')!, /^\/hello\/@vite\/client$/);
 	});
 });
+
+describe('Astro dev with config.base path', () => {
+	let fixture: Fixture;
+	let devServer: DevServer;
+
+	before(async () => {
+		fixture = await loadFixture({
+			root: './fixtures/astro-dev-headers/',
+			base: '/docs',
+			outDir: './dist/astro-dev-headers-astro-dev-with-config-base/',
+			cacheDir: './node_modules/.astro-test/astro-dev-headers-astro-dev-with-config-base/',
+		});
+		devServer = await fixture.startDevServer();
+	});
+
+	after(async () => {
+		await devServer.stop();
+	});
+
+	it('prefixes dev script src with config.base for reverse proxy support', async () => {
+		const result = await fixture.fetch('/docs/');
+		const html = await result.text();
+		const $ = cheerioLoad(html);
+		assert.match($('script').attr('src')!, /^\/docs\/@vite\/client$/);
+	});
+});

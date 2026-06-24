@@ -1,3 +1,4 @@
+import { removeTrailingForwardSlash } from '@astrojs/internal-helpers/path';
 import type { ComponentInstance, ImportedDevStyle } from '../../../types/astro.js';
 import type {
 	DevToolbarMetadata,
@@ -81,8 +82,12 @@ export class NonRunnablePipeline extends Pipeline {
 			}
 		}
 
+		// Prefix dev scripts with the configured base path so that assets resolve
+		// correctly when the dev server is accessed through a path-based reverse
+		// proxy (e.g. code-server's /proxy/{port} or /absproxy/{port}).
+		const devBase = removeTrailingForwardSlash(base);
 		scripts.add({
-			props: { type: 'module', src: '/@vite/client' },
+			props: { type: 'module', src: `${devBase}/@vite/client` },
 			children: '',
 		});
 
@@ -90,7 +95,7 @@ export class NonRunnablePipeline extends Pipeline {
 			scripts.add({
 				props: {
 					type: 'module',
-					src: '/@id/astro/runtime/client/dev-toolbar/entrypoint.js',
+					src: `${devBase}/@id/astro/runtime/client/dev-toolbar/entrypoint.js`,
 				},
 				children: '',
 			});

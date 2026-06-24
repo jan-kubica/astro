@@ -1,4 +1,5 @@
 import { fileURLToPath } from 'node:url';
+import { removeTrailingForwardSlash } from '@astrojs/internal-helpers/path';
 import { type HeadElements, Pipeline, type TryRewriteResult } from '../core/base-pipeline.js';
 import { ASTRO_VERSION } from '../core/constants.js';
 import { enhanceViteSSRError } from '../core/errors/dev/index.js';
@@ -102,8 +103,12 @@ export class RunnablePipeline extends Pipeline {
 		// Inject HMR scripts
 		if (settings) {
 			if (isPage(filePath, settings) && runtimeMode === 'development') {
+				// Prefix dev scripts with the configured base path so that assets resolve
+				// correctly when the dev server is accessed through a path-based reverse
+				// proxy (e.g. code-server's /proxy/{port} or /absproxy/{port}).
+				const devBase = removeTrailingForwardSlash(settings.config.base);
 				scripts.add({
-					props: { type: 'module', src: '/@vite/client' },
+					props: { type: 'module', src: `${devBase}/@vite/client` },
 					children: '',
 				});
 
@@ -111,7 +116,7 @@ export class RunnablePipeline extends Pipeline {
 					scripts.add({
 						props: {
 							type: 'module',
-							src: '/@id/astro/runtime/client/dev-toolbar/entrypoint.js',
+							src: `${devBase}/@id/astro/runtime/client/dev-toolbar/entrypoint.js`,
 						},
 						children: '',
 					});
