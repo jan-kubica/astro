@@ -6,7 +6,7 @@ import type { SSRManifest } from '../app/types.js';
 import { matchAllRoutes } from './match.js';
 import { getSortedPreloadedMatches } from '../../prerender/routing.js';
 import { getProps } from '../render/index.js';
-import { getCustom404Route } from './helpers.js';
+import { getCustom404Route, getLocaleFromPathname } from './helpers.js';
 import { NoMatchingStaticPathFound } from '../errors/errors-data.js';
 import { isAstroError } from '../errors/errors.js';
 import type { RouteData } from '../../types/public/index.js';
@@ -78,6 +78,27 @@ export async function matchRoute(
 				pathname,
 			)}\n\n${NoMatchingStaticPathFound.hint(possibleRoutes)}`,
 		);
+	}
+
+	// When i18n is configured, try to find a locale-specific 404 page first.
+	// For example, if the pathname is /en/nonexistent, try matching /en/404.
+	if (manifest.i18n) {
+		const locale = getLocaleFromPathname(pathname, manifest.i18n);
+		if (locale) {
+			const locale404Pathname = `/${locale}/404`;
+			const locale404Routes = matchAllRoutes(locale404Pathname, routesList);
+			if (locale404Routes.length > 0) {
+				const route = locale404Routes[0];
+				const filePath = new URL(`./${route.component}`, manifest.rootDir);
+				return {
+					route,
+					filePath,
+					// Use the locale 404 pathname so that dynamic route params
+					// (e.g. [lang]) can be extracted correctly during rendering.
+					resolvedPathname: locale404Pathname,
+				};
+			}
+		}
 	}
 
 	const custom404 = getCustom404Route(routesList);

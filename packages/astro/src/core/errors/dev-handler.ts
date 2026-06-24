@@ -4,7 +4,8 @@ import { FetchState } from '../fetch/fetch-state.js';
 import type { RouteData } from '../../types/public/index.js';
 import { AstroMiddleware } from '../middleware/astro-middleware.js';
 import { PagesHandler } from '../pages/handler.js';
-import { getCustom404Route, getCustom500Route } from '../routing/helpers.js';
+import { getCustom404Route, getCustom500Route, getLocaleFromPathname } from '../routing/helpers.js';
+import { matchAllRoutes } from '../routing/match.js';
 import { type AstroError, isAstroError } from './index.js';
 import { MiddlewareNoDataOrNextCalled, MiddlewareNotAResponse } from './errors-data.js';
 import type { ErrorHandler } from './handler.js';
@@ -59,7 +60,7 @@ export class DevErrorHandler implements ErrorHandler {
 		const shouldInjectCspMetaTags = this.#shouldInjectCspMetaTags;
 		const resolvedPathname = pathname ?? new FetchState(app.pipeline, request).pathname;
 
-		const renderRoute = async (routeData: RouteData): Promise<Response> => {
+		const renderRoute = async (routeData: RouteData, renderPathname: string): Promise<Response> => {
 			try {
 				const preloadedComponent = await app.pipeline.getComponentByRoute(routeData);
 				const errorState = new FetchState(app.pipeline, request);
@@ -67,7 +68,7 @@ export class DevErrorHandler implements ErrorHandler {
 				errorState.clientAddress = resolvedRenderOptions.clientAddress;
 				errorState.shouldInjectCspMetaTags = shouldInjectCspMetaTags ? !!app.manifest.csp : false;
 				errorState.routeData = routeData;
-				errorState.pathname = resolvedPathname;
+				errorState.pathname = renderPathname;
 				errorState.status = status;
 				errorState.componentInstance = preloadedComponent;
 				errorState.locals = resolvedRenderOptions.locals ?? ({} as App.Locals);
@@ -99,9 +100,21 @@ export class DevErrorHandler implements ErrorHandler {
 		};
 
 		if (status === 404) {
+			// When i18n is configured, try to find a locale-specific 404 page first.
+			if (app.manifest.i18n) {
+				const locale = getLocaleFromPathname(resolvedPathname, app.manifest.i18n);
+				if (locale) {
+					const locale404Path = `/${locale}/404`;
+					const locale404Routes = matchAllRoutes(locale404Path, app.manifestData);
+					if (locale404Routes.length > 0) {
+						return renderRoute(locale404Routes[0], locale404Path);
+					}
+				}
+			}
+
 			const custom404 = getCustom404Route(app.manifestData);
 			if (custom404) {
-				return renderRoute(custom404);
+				return renderRoute(custom404, resolvedPathname);
 			}
 		}
 
@@ -111,7 +124,7 @@ export class DevErrorHandler implements ErrorHandler {
 		if (!custom500) {
 			throw error;
 		} else {
-			return renderRoute(custom500);
+			return renderRoute(custom500, resolvedPathname);
 		}
 	}
 }

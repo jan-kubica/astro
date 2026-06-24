@@ -1,8 +1,9 @@
 import type { RouteData } from '../../types/public/internal.js';
 import type { IntegrationResolvedRoute } from '../../types/public/integrations.js';
-import type { RouteInfo } from '../app/types.js';
+import type { RouteInfo, SSRManifestI18n } from '../app/types.js';
 import type { RoutesList } from '../../types/astro.js';
 import { isRoute404, isRoute500 } from './internal/route-errors.js';
+import { normalizeTheLocale } from '../../i18n/index.js';
 
 type RedirectRouteData = RouteData & {
 	redirect: string;
@@ -99,4 +100,33 @@ export function hasNonPrerenderedRoute(
 		const isPrerendered = 'isPrerendered' in route ? route.isPrerendered : route.prerender;
 		return routeTypes.includes(route.type) && origins.includes(route.origin) && !isPrerendered;
 	});
+}
+
+/**
+ * Extract the locale from a pathname by checking if the first segment matches
+ * a configured i18n locale. Returns the matched locale string or undefined.
+ */
+export function getLocaleFromPathname(pathname: string, i18n: SSRManifestI18n): string | undefined {
+	const segments = pathname.split('/');
+	// segments[0] is '' (before the leading slash), segments[1] is the first path segment
+	const firstSegment = segments[1];
+	if (!firstSegment) return undefined;
+
+	for (const locale of i18n.locales) {
+		if (typeof locale === 'string') {
+			if (normalizeTheLocale(firstSegment) === normalizeTheLocale(locale)) {
+				return locale;
+			}
+		} else {
+			if (firstSegment === locale.path) {
+				return locale.path;
+			}
+			for (const code of locale.codes) {
+				if (normalizeTheLocale(firstSegment) === normalizeTheLocale(code)) {
+					return locale.path;
+				}
+			}
+		}
+	}
+	return undefined;
 }

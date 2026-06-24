@@ -237,8 +237,15 @@ export class AstroServerApp extends BaseApp<RunnablePipeline> {
 					socket.on('close', onSocketClose);
 				}
 
+				// When the matched route resolved to a different pathname (e.g. a
+				// locale-specific 404 page), update the URL so that the rendering
+				// pipeline can extract the correct route params.
+				const requestUrl = matchedRoute.resolvedPathname !== pathname
+					? new URL(url.origin + removeTrailingForwardSlash(self.manifest.base) + matchedRoute.resolvedPathname + url.search)
+					: url;
+
 				const request = createRequest({
-					url,
+					url: requestUrl,
 					headers: incomingRequest.headers,
 					method: incomingRequest.method,
 					body,

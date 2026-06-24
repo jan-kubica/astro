@@ -7,6 +7,7 @@ import { getCookiesFromResponse } from '../cookies/response.js';
 import { AstroMiddleware } from '../middleware/astro-middleware.js';
 import { PagesHandler } from '../pages/handler.js';
 import { matchRoute } from '../routing/match.js';
+import { getLocaleFromPathname } from '../routing/helpers.js';
 import { provideSession } from '../session/handler.js';
 import { validateHost } from '../app/validate-headers.js';
 import type { ErrorHandler } from './handler.js';
@@ -49,8 +50,21 @@ export class DefaultErrorHandler implements ErrorHandler {
 	): Promise<Response> {
 		const app = this.#app;
 		const resolvedPathname = pathname ?? new FetchState(app.pipeline, request).pathname;
-		const errorRoutePath = `/${status}${app.manifest.trailingSlash === 'always' ? '/' : ''}`;
-		const errorRouteData = matchRoute(errorRoutePath, app.manifestData);
+		const trailSlash = app.manifest.trailingSlash === 'always' ? '/' : '';
+
+		// When i18n is configured, try to find a locale-specific error route first.
+		let errorRouteData: ReturnType<typeof matchRoute> = undefined;
+		if (app.manifest.i18n) {
+			const locale = getLocaleFromPathname(resolvedPathname, app.manifest.i18n);
+			if (locale) {
+				const localeErrorPath = `/${locale}/${status}${trailSlash}`;
+				errorRouteData = matchRoute(localeErrorPath, app.manifestData);
+			}
+		}
+		if (!errorRouteData) {
+			const errorRoutePath = `/${status}${trailSlash}`;
+			errorRouteData = matchRoute(errorRoutePath, app.manifestData);
+		}
 		const url = new URL(request.url);
 		if (errorRouteData) {
 			if (errorRouteData.prerender) {
