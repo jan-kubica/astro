@@ -376,6 +376,24 @@ export default function createIntegration({
 										conf.ssr.external = undefined;
 									}
 								},
+								configEnvironment: {
+									order: 'post',
+									handler(environmentName, options) {
+										// Clear resolve.external for server environments because Cloudflare
+										// Workers don't support externalized modules. This needs order: 'post'
+										// to run after Vitest's configEnvironment hook (which also uses
+										// order: 'post' but belongs to a non-enforced plugin, so it runs
+										// earlier). Direct mutation is required because returning
+										// { resolve: { external: [] } } would be merged via mergeConfig,
+										// which concatenates arrays rather than replacing them.
+										if (
+											(environmentName === 'ssr' || environmentName === 'prerender') &&
+											options.resolve
+										) {
+											options.resolve.external = [];
+										}
+									},
+								},
 							},
 							createConfigPlugin({
 								sessionKVBindingName,
