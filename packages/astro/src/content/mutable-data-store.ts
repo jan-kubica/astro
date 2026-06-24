@@ -274,6 +274,23 @@ export default new Map([\n${lines.join(',\n')}]);
 
 		this.#saveTimeout = setTimeout(async () => {
 			this.#saveTimeout = undefined;
+			// Flush pending asset and module imports before writing the data store.
+			// The data store file change triggers a full page reload via the watcher,
+			// so asset/module imports must be up-to-date on disk before the reload fires.
+			if (this.#assetsDirty && this.#assetsFile) {
+				if (this.#assetsSaveTimeout) {
+					clearTimeout(this.#assetsSaveTimeout);
+					this.#assetsSaveTimeout = undefined;
+				}
+				await this.writeAssetImports(this.#assetsFile);
+			}
+			if (this.#modulesDirty && this.#modulesFile) {
+				if (this.#modulesSaveTimeout) {
+					clearTimeout(this.#modulesSaveTimeout);
+					this.#modulesSaveTimeout = undefined;
+				}
+				await this.writeModuleImports(this.#modulesFile);
+			}
 			if (this.#file) {
 				await this.writeToDisk();
 			}
