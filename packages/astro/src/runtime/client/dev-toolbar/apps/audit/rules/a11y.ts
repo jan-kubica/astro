@@ -364,6 +364,16 @@ export const a11y: AuditRuleWithSelector[] = [
 				a11y_required_attributes[element.localName as keyof typeof a11y_required_attributes];
 
 			if (!requiredAttributes) return true;
+
+			// If the element's role is explicitly overridden to something different
+			// from its implicit semantic role, the tag-level required attributes
+			// no longer apply (e.g., <a role="button"> doesn't need href)
+			const explicitRole = element.getAttribute('role');
+			if (explicitRole) {
+				const implicitRole = a11y_implicit_semantics.get(element.localName);
+				if (implicitRole && explicitRole !== implicitRole) return false;
+			}
+
 			for (const attribute of requiredAttributes) {
 				if (!element.hasAttribute(attribute)) return true;
 			}
