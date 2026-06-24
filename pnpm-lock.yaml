@@ -6736,11 +6736,17 @@ importers:
         specifier: ^4.22.0
         version: 4.22.3
 
-  triage/17120:
+  triage/gh-16035:
     dependencies:
+      '@astrojs/cloudflare':
+        specifier: workspace:*
+        version: link:../../packages/integrations/cloudflare
       astro:
         specifier: workspace:*
         version: link:../../packages/astro
+      wrangler:
+        specifier: ^4.83.0
+        version: 4.95.0(@cloudflare/workers-types@4.20260527.1)
 
 packages:
 
